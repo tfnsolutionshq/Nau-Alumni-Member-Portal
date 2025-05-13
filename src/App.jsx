@@ -1,51 +1,24 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Home from "./Pages/home";
-import About from "./Pages/about";
-import BecomeAmember from "./Pages/Authentication/become-a-member";
-import Login from "./Pages/Authentication/login";
-import Resetpassword from "./Pages/Authentication/reset-password";
-import Newpassword from "./Pages/Authentication/new-password";
-import AlumniDirectory from "./Pages/alumni-directory";
-import BranchList from "./Pages/branch-list";
-import History from "./Pages/history";
-import Gallery from "./Pages/Gallery/galleria";
-import ViewGallery from "./Pages/Gallery/view-gallery";
-import Donations from "./Pages/Donation/donations";
-import DonationDetaisl from "./Pages/Donation/donation-details";
-import DonationList from "./Pages/Donation/donation-list";
-import Alumniprofiledetails from "./Pages/AlumniMembers/alumni-profile-details";
-import AlumniMembers from "./Pages/AlumniMembers/alumni-members"
-import AlumniNationalExecutives from "./Pages/AlumniMembers/alumni-national-executives";
-import AlumniNews from './Pages/AlumniNewsAndEvents/alumni-news'
-import AlumniNewsDetails from './Pages/AlumniNewsAndEvents/alumni-news-details'
-import AlumniEvents from './Pages/AlumniNewsAndEvents/alumni-events'
-import AlumniEventDetails from './Pages/AlumniNewsAndEvents/alumni-event-details'
+import DonationBox from "./Pages/Donations/DonationBox";
+import MemberChamber from "./Pages/MemberChamber";
+import Account from "./Pages/Account";
+import Mydonations from "./Pages/Donations/my-donations";
+import Alldonations from "./Pages/Donations/all-donations";
+import DonationDetail from "./Pages/Donations/donation-details";
 
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/become-a-member" element={<BecomeAmember />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/reset-password" element={<Resetpassword />} />
-        <Route path="/new-password" element={<Newpassword />} />
-        <Route path="/alumni-directory" element={<AlumniDirectory />} />
-        <Route path="/branch-list" element={<BranchList />} />
-        <Route path="/history" element={<History />} />
-        <Route path="/galleria" element={<Gallery />} />
-        <Route path="/view-gallery" element={<ViewGallery />} />
-        <Route path="/donations" element={<Donations />} />
-        <Route path="/donation-details" element={<DonationDetaisl />} />
-        <Route path="/donation-list" element={<DonationList />} />
-        <Route path="/alumni-members" element={<AlumniMembers />} />
-        <Route path="/alumni-national-executives" element={<AlumniNationalExecutives />} />
-        <Route path="/alumni-profile-details" element={<Alumniprofiledetails />} />
-        <Route path="/alumni-news" element={<AlumniNews />} />
-        <Route path="/alumni-news-details" element={<AlumniNewsDetails />} />
-        <Route path="/alumni-events" element={<AlumniEvents />} />
-        <Route path="/alumni-event-details" element={<AlumniEventDetails />} />
+        <Route path="/donation" element={<DonationBox />} />
+        <Route path="/member-chamber" element={<MemberChamber />} />
+        <Route path="/account" element={<Account />} />
+        <Route path="/support" element={<Home />} />
+        <Route path="/my-donations" element={<Mydonations />} />
+        <Route path="/all-donations" element={<Alldonations />} />
+        <Route path="/donation-details" element={<DonationDetail />} />
       </Routes>
     </Router>
   )
