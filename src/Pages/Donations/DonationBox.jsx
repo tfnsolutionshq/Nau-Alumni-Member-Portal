@@ -1,53 +1,86 @@
+"use client"
+
+import { Link } from 'react-router-dom';
 import DashboardLayout from '../../Components/Layout/DashboardLayout';
 import { ChevronRight } from "lucide-react"
+import { useState, useEffect } from 'react'; // Import useState and useEffect
+import axios from 'axios'; // Import axios
 
 function DonationBox() {
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Sample donation projects data
-  const projects = [
-    {
-      id: 1,
-      title: "Udemba School Renovation",
-      timeRemaining: "23:00:13",
-      description:
-        "Dr. Rita Orji is a Nigerian and, interestingly, one of Nnamdi Azikiwe University alumni who has attained success in her career as a in the department of computer science at Dalhousie...",
-    },
-    {
-      id: 2,
-      title: "Udemba School Renovation",
-      timeRemaining: "23:00:13",
-      description:
-        "Dr. Rita Orji is a Nigerian and, interestingly, one of Nnamdi Azikiwe University alumni who has attained success in her career as a in the department of computer science at Dalhousie...",
-    },
-    {
-      id: 3,
-      title: "Udemba School Renovation",
-      timeRemaining: "23:00:13",
-      description:
-        "Dr. Rita Orji is a Nigerian and, interestingly, one of Nnamdi Azikiwe University alumni who has attained success in her career as a in the department of computer science at Dalhousie...",
-    },
-    {
-      id: 4,
-      title: "Udemba School Renovation",
-      timeRemaining: "23:00:13",
-      description:
-        "Dr. Rita Orji is a Nigerian and, interestingly, one of Nnamdi Azikiwe University alumni who has attained success in her career as a in the department of computer science at Dalhousie...",
-    },
-    {
-      id: 5,
-      title: "Udemba School Renovation",
-      timeRemaining: "23:00:13",
-      description:
-        "Dr. Rita Orji is a Nigerian and, interestingly, one of Nnamdi Azikiwe University alumni who has attained success in her career as a in the department of computer science at Dalhousie...",
-    },
-    {
-      id: 6,
-      title: "Udemba School Renovation",
-      timeRemaining: "23:00:13",
-      description:
-        "Dr. Rita Orji is a Nigerian and, interestingly, one of Nnamdi Azikiwe University alumni who has attained success in her career as a in the department of computer science at Dalhousie...",
-    },
-  ]
+  useEffect(() => {
+    const fetchDonations = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const config = {
+          method: 'get',
+          maxBodyLength: Infinity,
+          url: 'https://unizikalumni-api.tfnsolutions.us/api/donations', // Endpoint for all donations
+          headers: {
+            'Accept': 'application/json'
+          }
+        };
+        const response = await axios.request(config);
+        if (response.data && Array.isArray(response.data.data)) {
+          setProjects(response.data.data);
+        } else {
+          setProjects([]);
+          setError("Invalid donations data format.");
+        }
+      } catch (err) {
+        console.error("Error fetching donations:", err);
+        setError("Failed to load donations. Please try again later.");
+        setProjects([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDonations();
+  }, []);
+
+  const calculateTimeRemaining = (endDate) => {
+    if (!endDate) return "N/A";
+    const now = new Date();
+    const end = new Date(endDate);
+    const diff = end.getTime() - now.getTime(); // Difference in milliseconds
+
+    if (diff <= 0) {
+      return "Closed";
+    }
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="min-h-screen bg-white flex justify-center items-center">
+          <div className="text-gray-500">Loading donations...</div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="min-h-screen bg-white flex justify-center items-center">
+          <div className="text-red-500">{error}</div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="min-h-screen bg-white p-4 md:p-6">
@@ -72,39 +105,59 @@ function DonationBox() {
               Sort By
             </button>
           </div>
-          <button className="bg-[#FF6900] text-white rounded px-4 py-2 text-sm flex items-center">
-            View My Donations
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </button>
+          <Link to={`/my-donations`} className="text-sm text-blue-900 hover:underline">
+            <button className="bg-[#FF6900] text-white rounded px-4 py-2 text-sm flex items-center">
+              View My Donations
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </button>
+          </Link>
         </div>
 
         {/* Projects Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {projects.map((project) => (
-            <div key={project.id} className=" p-2 border border-gray-200 overflow-hidden">
-              {/* Project Image */}
-              <div className="bg-gray-200 h-48 w-full"></div>
+        {projects.length === 0 ? (
+          <div className="text-gray-500 text-center py-10">No donation projects available.</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {projects.map((project) => (
+              <div key={project.id} className=" p-2 border border-gray-200 overflow-hidden">
+                {/* Project Image */}
+                <div className="h-48 w-full relative">
+                  <img
+                    src={project.banner_image_url || "https://placehold.co/400x192/cccccc/ffffff?text=No+Image"}
+                    alt={project.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "https://placehold.co/400x192/cccccc/ffffff?text=No+Image";
+                    }}
+                  />
+                </div>
 
-              {/* Project Content */}
-              <div className="py-3 px-1">
-                <h3 className="font-bold text-lg mb-1">{project.title}</h3>
-                <p className="text-gray-700 text-sm mb-3"><span className="bg-[#EDEBEE] p-1 rounded">{project.timeRemaining}</span></p>
-                <p className="text-sm text-gray-700 mb-4 line-clamp-3">{project.description}</p>
-                <a href="#" className="text-sm text-blue-900 hover:underline">
-                  See More
-                </a>
-                <hr className='mt-3'/>
-                {/* Donate Button */}
-                <div className="pt-3 flex justify-between items-center">
-                  <a href="#" className="text-[#D85E00] text-sm font-medium">
-                    DONATE HERE
-                  </a>
-                  <ChevronRight className="h-4 w-4 text-[#D85E00]" />
+                {/* Project Content */}
+                <div className="py-3 px-1">
+                  <h3 className="font-bold text-lg mb-1">{project.title}</h3>
+                  <p className="text-gray-700 text-sm mb-3">
+                    <span className="bg-[#EDEBEE] p-1 rounded">
+                      {calculateTimeRemaining(project.end_date)}
+                    </span>
+                  </p>
+                  <p className="text-sm text-gray-700 mb-4 line-clamp-3">{project.description}</p>
+                  <Link to={`/donation-details/${project.id}`} className="text-sm text-blue-900 hover:underline">
+                    See More
+                  </Link>
+                  <hr className='mt-3'/>
+                  {/* Donate Button */}
+                  <div className="pt-3 flex justify-between items-center">
+                    <Link to={`/donation-details/${project.id}`} className="text-[#D85E00] text-sm font-medium">
+                      DONATE HERE
+                    </Link>
+                    <ChevronRight className="h-4 w-4 text-[#D85E00]" />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

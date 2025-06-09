@@ -1,402 +1,650 @@
+"use client"
 
-import { useState, useEffect } from 'react';
-import DashboardLayout from '../Components/Layout/DashboardLayout';
-import QuestionnairePopup from '../Components/Questionnaire/QuestionnairePopup';
+import { useState, useEffect } from "react"
+import DashboardLayout from "../Components/Layout/DashboardLayout"
+import QuestionnairePopup from "../Components/Questionnaire/QuestionnairePopup"
+import MembershipPopup from "../Components/Popups/Membership-Popup"
+import SuggestionPopup from "../Components/Popups/Suggestion-Popup"
+import DonationPopup from "../Components/Popups/Donation-Popup"
+import SurveyPopup from "../Components/Questionnaire/QuestionnairePopup" // Import the new SurveyPopup
+import { Link } from "react-router-dom"
+import axios from "axios"
+import { useAuth } from "../contexts/AuthContext"
 
 function Home() {
-  const [userName, setUserName] = useState('Adeola');
-  const [showMembershipPopup, setShowMembershipPopup] = useState(false);
-  const [showSuggestionPopup, setShowSuggestionPopup] = useState(false);
-  const [showDonationPopup, setShowDonationPopup] = useState(false);
-  const [selectedCurrency, setSelectedCurrency] = useState('');
-  const [donationAmount, setDonationAmount] = useState('');
-  const [showQuestionnaire, setShowQuestionnaire] = useState(true);
-  const [questionnaireAnswers, setQuestionnaireAnswers] = useState({});
+  const [userName, setUserName] = useState("") // Initialize as empty string
+  const [userDetails, setUserDetails] = useState(null)
+  const [showMembershipPopup, setShowMembershipPopup] = useState(false)
+  const [showSuggestionPopup, setShowSuggestionPopup] = useState(false)
+  const [showDonationPopup, setShowDonationPopup] = useState(false)
+  const [selectedCurrency, setSelectedCurrency] = useState("")
+  const [donationAmount, setDonationAmount] = useState("")
+  const [showQuestionnaire, setShowQuestionnaire] = useState(false) // Controlled by specific logic
+
+  // States for API data
+  const [events, setEvents] = useState([])
+  const [news, setNews] = useState([])
+  const [currentEventIndex, setCurrentEventIndex] = useState(0) // For events in the "Programs & Events" section
+  const [currentBannerIndex, setCurrentBannerIndex] = useState(0) // For banner carousel
+  const [loadingEvents, setLoadingEvents] = useState(true)
+  const [loadingNews, setLoadingNews] = useState(true)
+  const [errorEvents, setErrorEvents] = useState(null)
+  const [errorNews, setErrorNews] = useState(null)
+
+  // States for User Survey Popup and sequential display
+  const [unansweredSurveys, setUnansweredSurveys] = useState([]) // Surveys user still needs to answer (from API)
+  const [currentSurveyToDisplay, setCurrentSurveyToDisplay] = useState(null) // The survey currently in the popup
+  const [showUserSurveyPopup, setShowUserSurveyPopup] = useState(false)
+  const [loadingUserSurveyLogic, setLoadingUserSurveyLogic] = useState(true) // Tracks initial survey load
+  const [errorUserSurvey, setErrorUserSurvey] = useState(null)
+  const [loadingUserDetails, setLoadingUserDetails] = useState(true)
+
   const [suggestionForm, setSuggestionForm] = useState({
-    name: '',
-    email: '',
-    contactNumber: '',
-    comment: ''
-  });
-  
-  // Check if user has already completed the questionnaire
-  // useEffect(() => {
-  //   // Get stored questionnaire data
-  //   const hasCompletedQuestionnaire = localStorage.getItem('hasCompletedQuestionnaire');
-  //   const storedAnswers = localStorage.getItem('questionnaireAnswers');
-    
-  //   // If there are stored answers, parse them
-  //   if (storedAnswers) {
-  //     setQuestionnaireAnswers(JSON.parse(storedAnswers));
-  //   }
-    
-  //   // Show questionnaire on page reload unless explicitly marked as completed
-  //   if (hasCompletedQuestionnaire === 'true') {
-  //     setShowQuestionnaire(false);
-  //   } else {
-  //     setShowQuestionnaire(true);
-  //   }
-  // }, []);
+    name: "",
+    email: "",
+    contactNumber: "",
+    comment: "",
+  })
+
+  const { token, isAuthenticated, loading: authLoading, user: authUser } = useAuth()
+
+  // Fetch user details from /my-details endpoint
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      if (authLoading || !isAuthenticated || !token) {
+        setLoadingUserDetails(false)
+        setUserName("Guest") // Set to guest if not authenticated
+        return
+      }
+
+      try {
+        setLoadingUserDetails(true)
+        const config = {
+          method: "get",
+          maxBodyLength: Number.POSITIVE_INFINITY,
+          url: "https://unizikalumni-api.tfnsolutions.us/api/my-details",
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+
+        const response = await axios.request(config)
+
+        // Updated to match new API response structure
+        if (response.data && response.data.data) {
+          const memberData = response.data.data
+          setUserDetails(memberData)
+          setUserName(memberData.first_name || "User") // Set first_name
+        } else {
+          // Log the actual response data if it doesn't match expected format
+          console.error("Invalid user details response format or no member data. Actual response:", response.data)
+          setUserName("User") // Fallback if data format is unexpected
+        }
+      } catch (err) {
+        console.error("Error fetching user details:", err)
+        if (err.response) {
+          // Log specific error response from the server
+          console.error("API error response for user details:", err.response.data)
+          console.error("API error status:", err.response.status)
+        } else if (err.request) {
+          // The request was made but no response was received
+          console.error("No response received for user details API:", err.request)
+        } else {
+          // Something happened in setting up the request that triggered an Error
+          console.error("Request setup error for user details:", err.message)
+        }
+        setUserName("User") // Fallback on error
+      } finally {
+        setLoadingUserDetails(false)
+      }
+    }
+
+    fetchUserDetails()
+  }, [authLoading, isAuthenticated, token])
+
+  // Set initial username based on userDetails once loaded
+  useEffect(() => {
+    if (userDetails?.first_name) {
+      setUserName(userDetails.first_name)
+    } else {
+      setUserName("User") // Default if no first_name
+    }
+
+    // Original questionnaire logic
+    const hasCompletedOriginalQuestionnaire = localStorage.getItem("hasCompletedQuestionnaire")
+    if (hasCompletedOriginalQuestionnaire === "true") {
+      setShowQuestionnaire(false)
+    } else {
+      setShowQuestionnaire(true)
+    }
+  }, [userDetails])
+
+  // Fetch Events
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        setLoadingEvents(true)
+        setErrorEvents(null)
+        const config = {
+          method: "get",
+          maxBodyLength: Number.POSITIVE_INFINITY,
+          url: "https://unizikalumni-api.tfnsolutions.us/api/events",
+          headers: {
+            Accept: "application/json",
+          },
+        }
+        const response = await axios.request(config)
+        if (response.data && Array.isArray(response.data.data)) {
+          setEvents(response.data.data)
+        } else if (Array.isArray(response.data)) {
+          setEvents(response.data)
+        } else {
+          setEvents([])
+          setErrorEvents("Invalid event data format.")
+        }
+      } catch (err) {
+        console.error("Error fetching events:", err)
+        setErrorEvents("Failed to load events. Please try again.")
+      } finally {
+        setLoadingEvents(false)
+      }
+    }
+
+    fetchEvents()
+  }, [])
+
+  // Fetch News
+  useEffect(() => {
+    const fetchNews = async () => {
+      try {
+        setLoadingNews(true)
+        setErrorNews(null)
+        const config = {
+          method: "get",
+          maxBodyLength: Number.POSITIVE_INFINITY,
+          url: "https://unizikalumni-api.tfnsolutions.us/api/news",
+          headers: {
+            Accept: "application/json",
+          },
+        }
+        const response = await axios.request(config)
+        if (response.data && Array.isArray(response.data.data)) {
+          const latestNews = response.data.data
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+            .slice(0, 3)
+          setNews(latestNews)
+        } else if (Array.isArray(response.data)) {
+          const latestNews = response.data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 3)
+          setNews(latestNews)
+        } else {
+          setNews([])
+          setErrorNews("Invalid news data format.")
+        }
+      } catch (err) {
+        console.error("Error fetching news:", err)
+        setErrorNews("Failed to load news. Please try again.")
+      } finally {
+        setLoadingNews(false)
+      }
+    }
+
+    fetchNews()
+  }, [])
+
+  // Fetch unanswered surveys for user from the specific API endpoint
+  useEffect(() => {
+    const fetchUnansweredSurveys = async () => {
+      setLoadingUserSurveyLogic(true)
+      setErrorUserSurvey(null)
+
+      // Only proceed if authentication status is determined, user is authenticated, and user details are loaded
+      if (authLoading || !isAuthenticated || !token || !userDetails?.id || loadingUserDetails) {
+        setLoadingUserSurveyLogic(false)
+        return
+      }
+
+      const currentMemberId = userDetails.id
+
+      try {
+        // Prepare request data with member_id as query parameter
+        const config = {
+          method: "get",
+          maxBodyLength: Number.POSITIVE_INFINITY,
+          url: `https://unizikalumni-api.tfnsolutions.us/api/surveys?member_id=${currentMemberId}`,
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+
+        const response = await axios.request(config)
+
+        if (response.data && Array.isArray(response.data.data)) {
+          const surveys = response.data.data
+          setUnansweredSurveys(surveys)
+
+          if (surveys.length > 0) {
+            // Set the first unanswered survey to display
+            setCurrentSurveyToDisplay(surveys[0])
+            setShowUserSurveyPopup(true)
+          } else {
+            // No unanswered surveys, keep popup closed
+            setShowUserSurveyPopup(false)
+            setCurrentSurveyToDisplay(null)
+          }
+        } else {
+          console.log("No unanswered surveys available or invalid format.")
+          setUnansweredSurveys([])
+          setShowUserSurveyPopup(false)
+          setCurrentSurveyToDisplay(null)
+        }
+      } catch (err) {
+        console.error("Error fetching unanswered surveys:", err)
+        // Only set error if it's not an auth issue
+        if (err.response?.status !== 401) {
+          setErrorUserSurvey("Failed to load surveys. Please try again.")
+        }
+        setUnansweredSurveys([])
+        setShowUserSurveyPopup(false)
+        setCurrentSurveyToDisplay(null)
+      } finally {
+        setLoadingUserSurveyLogic(false)
+      }
+    }
+
+    // Trigger survey loading only when user details are available
+    if (!authLoading && isAuthenticated && token && userDetails?.id && !loadingUserDetails) {
+      fetchUnansweredSurveys()
+    }
+  }, [authLoading, isAuthenticated, token, userDetails, loadingUserDetails])
+
+  // Callback from SurveyPopup when user submits a response
+  const handleUserSurveySubmitted = (surveyId) => {
+    console.log(`User submitted response for survey: ${surveyId}`)
+
+    // Remove the answered survey from the local unanswered list
+    const updatedUnanswered = unansweredSurveys.filter((survey) => survey.id !== surveyId)
+    setUnansweredSurveys(updatedUnanswered)
+
+    if (updatedUnanswered.length > 0) {
+      // If there are more unanswered surveys, show the next one
+      setCurrentSurveyToDisplay(updatedUnanswered[0])
+      setShowUserSurveyPopup(true) // Re-open popup immediately for the next question
+    } else {
+      // All surveys answered, close popup
+      setShowUserSurveyPopup(false)
+      setCurrentSurveyToDisplay(null)
+      alert("You have answered all available surveys. Thank you!") // Simple success message
+    }
+  }
+
+  // Carousel auto-advance for banner
+  useEffect(() => {
+    if (events.length > 1) {
+      const interval = setInterval(() => {
+        setCurrentBannerIndex((prevIndex) => (prevIndex === events.length - 1 ? 0 : prevIndex + 1))
+      }, 5000) // Change image every 5 seconds
+      return () => clearInterval(interval)
+    }
+  }, [events.length])
 
   const handleSuggestionChange = (e) => {
-    const { name, value } = e.target;
-    setSuggestionForm(prev => ({
+    const { name, value } = e.target
+    setSuggestionForm((prev) => ({
       ...prev,
-      [name]: value
-    }));
-  };
+      [name]: value,
+    }))
+  }
 
   const handleSuggestionSubmit = () => {
-    console.log('Suggestion submitted:', suggestionForm);
-    setShowSuggestionPopup(false);
+    console.log("Suggestion submitted:", suggestionForm)
+    setShowSuggestionPopup(false)
     setSuggestionForm({
-      name: '',
-      email: '',
-      contactNumber: '',
-      comment: ''
-    });
-  };
+      name: "",
+      email: "",
+      contactNumber: "",
+      comment: "",
+    })
+  }
 
   const handleDonationSubmit = () => {
-    console.log('Donation submitted:', { currency: selectedCurrency, amount: donationAmount });
-    setShowDonationPopup(false);
-    setSelectedCurrency('');
-    setDonationAmount('');
-  };
-  
-  // Handle questionnaire completion
+    console.log("Donation submitted:", { currency: selectedCurrency, amount: donationAmount })
+    setShowDonationPopup(false)
+    setSelectedCurrency("")
+    setDonationAmount("")
+  }
+
   const handleQuestionnaireComplete = (answers) => {
-    console.log('Questionnaire completed:', answers);
-    setQuestionnaireAnswers(answers);
-    setShowQuestionnaire(false);
-    // Store both completion status and answers in localStorage
-    localStorage.setItem('hasCompletedQuestionnaire', 'true');
-    localStorage.setItem('questionnaireAnswers', JSON.stringify(answers));
-  };
+    console.log("Questionnaire completed:", answers)
+    // You might want to persist these answers or mark questionnaire as done here
+    // For now, it simply closes the popup.
+    setShowQuestionnaire(false)
+  }
+
+  // Event carousel navigation for Programs & Events section
+  const handlePrevEvent = () => {
+    setCurrentEventIndex((prevIndex) => (prevIndex === 0 ? events.length - 1 : prevIndex - 1))
+  }
+
+  const handleNextEvent = () => {
+    setCurrentEventIndex((prevIndex) => (prevIndex === events.length - 1 ? 0 : prevIndex + 1))
+  }
+
+  const currentEvent = events[currentEventIndex]
+  const currentBannerEvent = events[currentBannerIndex]
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return ""
+    try {
+      const date = new Date(dateString)
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    } catch (error) {
+      return dateString
+    }
+  }
 
   return (
-    <DashboardLayout>
-      <div className="p-6 font-instrument">
+    <DashboardLayout userDetails={userDetails}>
+      <div className="p-4 md:p-6 font-instrument">
         {/* Welcome Section */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 space-y-4 md:space-y-0">
           <div>
-            <h1 className="text-2xl">Welcome, <span className='text-2xl font-bold'>{userName}</span></h1>
+            <h1 className="text-xl md:text-2xl">
+              Welcome, <span className="text-xl md:text-2xl font-bold">{userName || "Loading..."}</span>
+            </h1>
           </div>
-          <div className="flex items-center">
-            <div className="mr-2 text-sm font-medium">Membership Status</div>
-            <div className="mr-2 text-[#B93815] p-1 rounded bg-[#FBF0E9] text-sm">• Not Confirmed</div>
-            <button 
+          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+            <div className="text-sm font-medium">Membership Status</div>
+            <div className="text-[#B93815] p-1 rounded bg-[#FBF0E9] text-sm">• Not Confirmed</div>
+            <button
               onClick={() => setShowMembershipPopup(true)}
-              className="bg-orange-500 text-white px-3 py-1 rounded-md text-sm flex items-center"
+              className="bg-orange-500 text-white px-3 py-1 rounded-md text-sm flex items-center justify-center"
             >
               Pay Now
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 ml-1"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </button>
           </div>
         </div>
 
-        {/* Banner Section */}
-        <div className="bg-gray-200 h-56 rounded-lg mb-6 flex items-center justify-center">
-          <p className="text-gray-500">Banner Content</p>
+        {/* Banner Section - Now a Carousel */}
+        <div className="relative bg-gray-200 h-40 md:h-56 rounded-lg mb-6 overflow-hidden">
+          {loadingEvents ? (
+            <div className="flex items-center justify-center h-full text-gray-500">Loading banner events...</div>
+          ) : errorEvents ? (
+            <div className="flex items-center justify-center h-full text-red-500">{errorEvents}</div>
+          ) : events.length > 0 && currentBannerEvent ? (
+            <Link to={`/event-details/${currentBannerEvent.id}`} className="block w-full h-full">
+              <img
+                src={
+                  currentBannerEvent.banner_image_url || "https://placehold.co/1000x224/cccccc/ffffff?text=Event+Banner"
+                }
+                alt={currentBannerEvent.title || "Event Banner"}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.onerror = null
+                  e.target.src = "https://placehold.co/1000x224/cccccc/ffffff?text=Event+Banner"
+                }}
+              />
+              {/* Optional: Add a title overlay on the banner */}
+              <div className="absolute inset-x-0 bottom-0 bg-black bg-opacity-50 text-white p-2 text-center">
+                <h3 className="font-semibold text-sm md:text-lg">{currentBannerEvent.title}</h3>
+              </div>
+            </Link>
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-500">No events to display in banner.</div>
+          )}
+
+          {/* Carousel Navigation Buttons */}
+          {events.length > 1 && (
+            <>
+              <button
+                className="absolute top-1/2 left-2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 md:p-2 rounded-full z-10 hover:bg-opacity-75 transition-opacity"
+                onClick={() =>
+                  setCurrentBannerIndex((prevIndex) => (prevIndex === 0 ? events.length - 1 : prevIndex - 1))
+                }
+              >
+                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                className="absolute top-1/2 right-2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 md:p-2 rounded-full z-10 hover:bg-opacity-75 transition-opacity"
+                onClick={() =>
+                  setCurrentBannerIndex((prevIndex) => (prevIndex === events.length - 1 ? 0 : prevIndex + 1))
+                }
+              >
+                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </>
+          )}
+
+          {/* Carousel Dots Indicator */}
+          {events.length > 1 && (
+            <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1 z-10">
+              {events.map((_, idx) => (
+                <button
+                  key={idx}
+                  className={`w-2 h-2 rounded-full ${currentBannerIndex === idx ? "bg-white" : "bg-gray-400 opacity-75"}`}
+                  onClick={() => setCurrentBannerIndex(idx)}
+                  aria-label={`Go to slide ${idx + 1}`}
+                ></button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Boxes Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-5">
           {/* Suggestion Box */}
-          <div 
+          <div
             onClick={() => setShowSuggestionPopup(true)}
-            className="bg-[#F8E5D9] p-8 rounded-lg flex justify-between items-start cursor-pointer hover:shadow-md transition-shadow"
+            className="bg-[#F8E5D9] p-6 md:p-8 rounded-lg flex justify-between items-start cursor-pointer hover:shadow-md transition-shadow"
           >
             <div>
-              <h2 className="text-orange-600 font-semibold text-xl">Suggestion Box</h2>
+              <h2 className="text-orange-600 font-semibold text-lg md:text-xl">Suggestion Box</h2>
             </div>
             <div>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-[#D15300]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-12 w-12 md:h-16 md:w-16 text-[#D15300]"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
               </svg>
             </div>
           </div>
 
           {/* Donation Box */}
-          <div 
+          <div
             onClick={() => setShowDonationPopup(true)}
-            className="bg-[#BCCFDC] p-8 rounded-lg flex justify-between items-start cursor-pointer hover:shadow-md transition-shadow"
+            className="bg-[#BCCFDC] p-6 md:p-8 rounded-lg flex justify-between items-start cursor-pointer hover:shadow-md transition-shadow"
           >
             <div>
-              <h2 className="text-[#20608B] font-semibold text-xl">Donation Box</h2>
+              <h2 className="text-[#20608B] font-semibold text-lg md:text-xl">Donation Box</h2>
             </div>
             <div>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-[#20608B]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-12 w-12 md:h-16 md:w-16 text-[#20608B]"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                />
               </svg>
             </div>
           </div>
         </div>
 
         {/* Programs & News Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 mb-8">
           {/* Alumni Programs & Events */}
           <div>
-            <h2 className="text-xs font-semibold pt-3 uppercase mb-2 border-t-2 border-orange-500 pb-1">Alumni Programs & Events</h2>
-            <div className="flex flex-col h-full">
-              <h3 className="font-medium text-base mb-1">Alumni Reunion Reboot 2.0 (Lagos Chapter)</h3>
-              <p className="text-gray-600 text-sm mb-2 mt-1">
-              Post Graduate Studies: The Important factor to bear in mind Post Graduate Studies: The Important factor to bear in mindPost Graduate Studies: The Important factor to bear in mind
-              </p>
-              <hr className="my-2" />
-              <div className="mt-3">
-                <p className="text-black font-semibold text-lg mb-1">Lagos, Nigeria</p>
-                <p className="text-gray-500 text-sm mb-4">17 Jan, 2024 | 12:00PM</p>
-                <div className="flex gap-2">
-                  <button className="border border-gray-300 p-1 hover:bg-gray-100">
-                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/>
-                    </svg>
-                  </button>
-                  <button className="border border-gray-300 p-1 hover:bg-gray-100">
-                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
-                    </svg>
-                  </button>
+            <h2 className="text-xs font-semibold pt-3 uppercase mb-2 border-t-2 border-orange-500 pb-1">
+              Alumni Programs & Events
+            </h2>
+            {loadingEvents ? (
+              <div className="text-gray-500">Loading events...</div>
+            ) : errorEvents ? (
+              <div className="text-red-500">{errorEvents}</div>
+            ) : currentEvent ? (
+              <div className="flex flex-col h-full">
+                <Link to={`/event-details/${currentEvent.id}`} className="block">
+                  <h3 className="font-medium text-base mb-1 hover:underline">{currentEvent.title}</h3>
+                </Link>
+                <p className="text-gray-600 text-sm mb-2 mt-1">
+                  {currentEvent.description.length > 200
+                    ? `${currentEvent.description.substring(0, 200)}...`
+                    : currentEvent.description}
+                </p>
+                <hr className="my-2" />
+                <div className="mt-3">
+                  <p className="text-black font-semibold text-lg mb-1">{currentEvent.venue}</p>
+                  <p className="text-gray-500 text-sm mb-4">
+                    {formatDate(currentEvent.start_date)} | {currentEvent.meeting_time || "N/A"}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      className="border border-gray-300 p-1 hover:bg-gray-100 rounded"
+                      onClick={handlePrevEvent}
+                      disabled={events.length <= 1}
+                    >
+                      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    <button
+                      className="border border-gray-300 p-1 hover:bg-gray-100 rounded"
+                      onClick={handleNextEvent}
+                      disabled={events.length <= 1}
+                    >
+                      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="text-gray-500">No upcoming events.</div>
+            )}
           </div>
+
           {/* News for Alumni */}
           <div>
-            <h2 className="text-xs font-semibold uppercase mb-2 border-t-2 border-orange-500 pb-1 pt-2">News for Alumni</h2>
-            <div className="flex flex-col gap-4">
-              {/* News Item 1 */}
-              <div className="flex mt-2 gap-3 items-start">
-                <img src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=facearea&w=80&h=80" alt="news" className="w-16 h-16 object-cover" />
-                <div>
-                  <h3 className="font-medium text-base leading-tight mb-1">Tips: How to secure Transcript for Intl Purpose</h3>
-                  <p className="text-gray-500 text-xs">17 JUNE 2020</p>
-                </div>
+            <h2 className="text-xs font-semibold uppercase mb-2 border-t-2 border-orange-500 pb-1 pt-2">
+              News for Alumni
+            </h2>
+            {loadingNews ? (
+              <div className="text-gray-500">Loading news...</div>
+            ) : errorNews ? (
+              <div className="text-red-500">{errorNews}</div>
+            ) : news.length > 0 ? (
+              <div className="flex flex-col gap-4">
+                {news.map((item) => (
+                  <Link to={`/news-details/${item.id}`} key={item.id} className="flex mt-2 gap-3 items-start">
+                    <img
+                      src={item.banner_image_url || "https://placehold.co/80x80/cccccc/ffffff?text=NoImg"}
+                      alt={item.title}
+                      className="w-12 h-12 md:w-16 md:h-16 object-cover rounded flex-shrink-0"
+                      onError={(e) => {
+                        e.target.onerror = null
+                        e.target.src = "https://placehold.co/80x80/cccccc/ffffff?text=NoImg"
+                      }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-sm md:text-base leading-tight mb-1 hover:underline truncate">
+                        {item.title}
+                      </h3>
+                      <p className="text-gray-500 text-xs">{formatDate(item.created_at)}</p>
+                    </div>
+                  </Link>
+                ))}
               </div>
-              {/* News Item 2 */}
-              <div className="flex gap-3 items-start">
-                <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=facearea&w=80&h=80" alt="news" className="w-16 h-16 object-cover" />
-                <div>
-                  <h3 className="font-medium text-base leading-tight mb-1">Post Graduate Studies: The Important factor to bear in...</h3>
-                  <p className="text-gray-500 text-xs">17 JUNE 2020</p>
-                </div>
-              </div>
-            </div>
+            ) : (
+              <div className="text-gray-500">No recent news.</div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Membership Registration Fee Popup */}
-      {showMembershipPopup && (
-        <div className="fixed font-instrument inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg w-full max-w-xl relative">
-            <button 
-              onClick={() => setShowMembershipPopup(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            <div className="p-6">
-              <h2 className="text-2xl font-semibold mb-1">Membership Registration Fee</h2>
-              <p className="text-gray-600 text-base mb-6">Proceed to fill in the below information</p>
-              
-              <div className="mb-4">
-                <label className="block text-sm text-gray-700 mb-2">What currency would you love to Pay in?</label>
-                <div className="relative">
-                  <select 
-                    className="w-full p-2 border rounded-md appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={selectedCurrency}
-                    onChange={(e) => setSelectedCurrency(e.target.value)}
-                  >
-                    <option value="" disabled>Select currency</option>
-                    <option value="NGN">Nigerian Naira (NGN)</option>
-                    <option value="USD">US Dollar (USD)</option>
-                    <option value="EUR">Euro (EUR)</option>
-                    <option value="GBP">British Pound (GBP)</option>
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mb-6">
-                <label className="block text-gray-700 text-sm mb-2">Amount to Pay</label>
-                <input 
-                  type="text" 
-                  value="₦5,000.00"
-                  disabled
-                  className="w-full p-2 border rounded-md bg-gray-100"
-                />
-              </div>
-              
-              <button 
-                className="w-full bg-[#D15300] text-white py-2 rounded-md hover:bg-orange-600 transition-colors"
-                onClick={() => setShowMembershipPopup(false)}
-              >
-                Proceed to Pay
-              </button>
-              
-              <p className="text-center text-gray-600 text-sm mt-4">
-                This is a one time payment which applies for all chapter. Once paid, Membership Status will be Confirmed
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      <MembershipPopup
+        showMembershipPopup={showMembershipPopup}
+        setShowMembershipPopup={setShowMembershipPopup}
+        selectedCurrency={selectedCurrency}
+        setSelectedCurrency={setSelectedCurrency}
+      />
 
       {/* Suggestion Box Popup */}
       {showSuggestionPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg w-full max-w-xl relative">
-            <button 
-              onClick={() => setShowSuggestionPopup(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            <div className="p-6">
-              <h2 className="text-2xl font-semibold mb-1">Suggestion box</h2>
-              <p className="text-gray-600 mb-6">Proceed to fill in the below information</p>
-              
-              <div className="mb-2">
-                <label className="block text-gray-700 text-sm mb-1">Name</label>
-                <input 
-                  type="text" 
-                  name="name"
-                  value={suggestionForm.name}
-                  onChange={handleSuggestionChange}
-                  placeholder="Uche ThankGod"
-                  className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div className="mb-2">
-                <label className="block text-gray-700 mb-1 text-sm">Email</label>
-                <input 
-                  type="email" 
-                  name="email"
-                  value={suggestionForm.email}
-                  onChange={handleSuggestionChange}
-                  placeholder="dgreatuc@gmail.com"
-                  className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div className="mb-2">
-                <label className="block text-gray-700 mb-1 text-sm">Contact Number</label>
-                <input 
-                  type="tel" 
-                  name="contactNumber"
-                  value={suggestionForm.contactNumber}
-                  onChange={handleSuggestionChange}
-                  placeholder="+234 706 979 0950"
-                  className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 mb-1 text-sm">Comment</label>
-                <textarea 
-                  name="comment"
-                  value={suggestionForm.comment}
-                  onChange={handleSuggestionChange}
-                  placeholder="Enter your suggestion"
-                  rows="4"
-                  className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                ></textarea>
-              </div>
-              
-              <button 
-                className="w-full bg-[#D15300] text-white py-2 rounded-md hover:bg-orange-600 transition-colors"
-                onClick={handleSuggestionSubmit}
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
+        <SuggestionPopup
+          showSuggestionPopup={showSuggestionPopup}
+          setShowSuggestionPopup={setShowSuggestionPopup}
+          suggestionForm={suggestionForm}
+          handleSuggestionChange={handleSuggestionChange}
+          handleSuggestionSubmit={handleSuggestionSubmit}
+        />
       )}
 
       {/* Donation Box Popup */}
-      {showDonationPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg w-full max-w-xl relative">
-            <button 
-              onClick={() => setShowDonationPopup(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            <div className="p-6">
-              <h2 className="text-2xl font-semibold mb-1">Thank you for your interest to donate to this cause as an 'anonymous participant'</h2>
-              <p className="text-gray-600 mb-6">Proceed to fill in the below information</p>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 mb-1 text-sm">What currency would you love to donate in?</label>
-                <div className="relative">
-                  <select 
-                    className="w-full p-2 border rounded-md appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={selectedCurrency}
-                    onChange={(e) => setSelectedCurrency(e.target.value)}
-                  >
-                    <option value="" disabled>Select currency</option>
-                    <option value="NGN">Nigerian Naira (NGN)</option>
-                    <option value="USD">US Dollar (USD)</option>
-                    <option value="EUR">Euro (EUR)</option>
-                    <option value="GBP">British Pound (GBP)</option>
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mb-6">
-                <label className="block text-gray-700 mb-1 text-sm">How much do you want to Donate?</label>
-                <input 
-                  type="text" 
-                  value={donationAmount}
-                  onChange={(e) => setDonationAmount(e.target.value)}
-                  placeholder="Enter Amount"
-                  className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <button 
-                className="w-full bg-[#D15300] text-white py-2 rounded-md hover:bg-orange-600 transition-colors"
-                onClick={handleDonationSubmit}
-              >
-                Proceed to Donate
-              </button>
-              
-              <p className="text-center text-gray-600 text-sm mt-4">
-                This donation is completely anonymous and your identity will not be disclosed to the public
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Questionnaire Popup */}
-      {showQuestionnaire && (
-        <QuestionnairePopup onComplete={handleQuestionnaireComplete} />
+      <DonationPopup
+        showDonationPopup={showDonationPopup}
+        setShowDonationPopup={setShowDonationPopup}
+        selectedCurrency={selectedCurrency}
+        setSelectedCurrency={setSelectedCurrency}
+        donationAmount={donationAmount}
+        setDonationAmount={setDonationAmount}
+        handleDonationSubmit={handleDonationSubmit}
+      />
+
+      {/* Questionnaire Popup (original, separate from the new survey) */}
+      {showQuestionnaire && <QuestionnairePopup onComplete={handleQuestionnaireComplete} />}
+
+      {/* User Survey Popup - Only show if there are unanswered surveys */}
+      {loadingUserSurveyLogic ? (
+        // Optionally show a small loading indicator for survey logic
+        <div className="sr-only">Loading surveys for user...</div>
+      ) : (
+        currentSurveyToDisplay && ( // Only render if a survey question is loaded and ready to display
+          <SurveyPopup
+            show={showUserSurveyPopup}
+            onClose={() => setShowUserSurveyPopup(false)} // Allow closing if user opts out
+            surveyData={currentSurveyToDisplay}
+            onSurveySubmitted={handleUserSurveySubmitted}
+          />
+        )
       )}
     </DashboardLayout>
-  );
+  )
 }
 
-export default Home;
+export default Home
