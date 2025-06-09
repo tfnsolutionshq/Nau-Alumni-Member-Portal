@@ -240,7 +240,7 @@ function Account() {
       const config = {
         method: "post",
         maxBodyLength: Number.POSITIVE_INFINITY,
-        url: "https://unizikalumni-api.tfnsolutions.us/api/members",
+        url: "https://unizikalumni-api.tfnsolutions.us/api/profile/update",
         headers: {
           Authorization: `Bearer ${token}`,
           // FormData automatically sets Content-Type with boundary

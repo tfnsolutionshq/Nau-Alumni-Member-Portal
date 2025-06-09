@@ -167,7 +167,7 @@ const DashboardLayout = ({ children }) => { // Removed userDetails prop
 
   const handleLogout = () => {
     logout()
-    window.location.href = "http://localhost:5173/login"
+    window.location.href = "https://unizikalumni.tfnsolutions.us//login"
   }
 
   // Close mobile menu when route changes
