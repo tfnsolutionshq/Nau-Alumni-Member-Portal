@@ -163,14 +163,14 @@ function AllDonatorsForProject() { // Renamed component for clarity
 
                 <div className="py-4 px-6">
                     {/* Header */}
-                    <h1 className="text-2xl font-bold mb-6">Donators for: <span className="text-orange-500">{donationTitle}</span></h1>
+                    <h1 className="text-2xl font-bold mb-6">Donors for: <span className="text-orange-500">{donationTitle}</span></h1>
 
                     {/* Search and Download */}
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                         <div className="relative w-full md:w-auto">
                             <input
                                 type="text"
-                                placeholder="Search by donator name or amount..."
+                                placeholder="Search by donors name or amount..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-8 pr-4 py-2 border border-gray-300 rounded-md w-full md:w-80"
@@ -216,7 +216,7 @@ function AllDonatorsForProject() { // Renamed component for clarity
                     {/* Donators Table */}
                     {loading ? (
                         <div className="flex justify-center items-center py-8">
-                            <div className="text-gray-500">Loading donators...</div>
+                            <div className="text-gray-500">Loading donors...</div>
                         </div>
                     ) : error ? (
                         <div className="flex justify-center items-center py-8">
@@ -224,7 +224,7 @@ function AllDonatorsForProject() { // Renamed component for clarity
                         </div>
                     ) : filteredDonators.length === 0 ? (
                         <div className="flex justify-center items-center py-8">
-                            <div className="text-gray-500">No donators found for this donation.</div>
+                            <div className="text-gray-500">No donors found for this donation.</div>
                         </div>
                     ) : (
                         <>
@@ -233,7 +233,7 @@ function AllDonatorsForProject() { // Renamed component for clarity
                                     <thead>
                                         <tr className="bg-gray-100">
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                                                Donator Name
+                                                Donor Name
                                             </th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
                                                 Donation Date

@@ -117,17 +117,19 @@ const NewsDetails = () => {
       <div className="min-h-screen bg-white p-6">
         <div className="max-w-7xl mx-auto">
           {/* Back Button */}
-          <div className="mb-6">
+          <div className="mb-2">
             {/* Changed link to go back to events-news page, assuming it's the main listing */}
-            <Link to="/events-news" className="flex items-center text-gray-600 hover:text-orange-500 transition-colors">
+            {/* <Link to="/events-news" className="flex items-center text-gray-600 hover:text-orange-500 transition-colors">
               <ArrowLeft className="w-5 h-5 mr-2" />
               Back to News
-            </Link>
+            </Link> */}
           </div>
+
+          <h1 className="text-3xl md:text-3xl font-bold text-gray-800 mb-4">{newsItem.title}</h1>
 
           {/* News Banner */}
           {newsItem.banner_image_url && (
-            <div className="w-full h-64 md:h-80 bg-gray-200 rounded-lg overflow-hidden mb-6">
+            <div className="w-full h-64 md:h-80 bg-gray-200 rounded-sm overflow-hidden mb-6">
               <img
                 src={newsItem.banner_image_url}
                 alt={newsItem.title}
@@ -139,9 +141,6 @@ const NewsDetails = () => {
               />
             </div>
           )}
-
-          {/* News Title */}
-          <h1 className="text-3xl md:text-3xl font-bold text-gray-800 mb-4">{newsItem.title}</h1>
 
           {/* News Metadata */}
           <div className="flex items-center gap-4 text-gray-600 text-sm mb-6">
@@ -156,11 +155,11 @@ const NewsDetails = () => {
                 {newsItem.type}
               </span>
             )}
-            {newsItem.status && (
+            {/* {newsItem.status && (
               <span className="bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded-full text-xs font-medium">
                 Status: {newsItem.status}
               </span>
-            )}
+            )} */}
           </div>
 
           {/* News Description */}

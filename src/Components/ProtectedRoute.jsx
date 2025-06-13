@@ -28,7 +28,7 @@ const ProtectedRoute = ({ children }) => {
       } catch (error) {
         console.error('Error processing login from URL:', error);
         setRedirecting(true);
-        window.location.href = 'https://unizikalumni.tfnsolutions.us//login';
+        window.location.href = 'http://localhost:5173/login';
       }
       return;
     }
@@ -37,7 +37,7 @@ const ProtectedRoute = ({ children }) => {
     if (!loading && !isAuthenticated && !redirecting && !processingLogin) {
       setRedirecting(true);
       setTimeout(() => {
-        window.location.href = 'https://unizikalumni.tfnsolutions.us//login';
+        window.location.href = 'http://localhost:5173/login';
       }, 100);
     }
   }, [isAuthenticated, loading, redirecting, processingLogin, handleExternalLogin]);

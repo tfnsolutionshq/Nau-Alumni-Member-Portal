@@ -37,7 +37,7 @@ const SupportPopup = ({ isOpen, onClose }) => {
           
           {/* WhatsApp button */}
           <a 
-            href="https://wa.me/1234567890" 
+            href="https://wa.me/+2348063961963" 
             target="_blank" 
             rel="noopener noreferrer"
             className="flex items-center justify-center w-full bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition-colors"

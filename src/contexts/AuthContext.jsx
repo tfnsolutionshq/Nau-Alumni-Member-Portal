@@ -115,7 +115,7 @@ export const AuthProvider = ({ children }) => {
     sessionStorage.removeItem('hasRefreshedForToken'); // Clear the refresh flag on logout
     setUser(null);
     console.log('AuthContext: User logged out. Redirecting to login...');
-    window.location.href = 'https://unizikalumni.tfnsolutions.us//login'; // Redirect after clearing
+    window.location.href = 'http://localhost:5173/login'; // Redirect after clearing
   };
 
   // Handle login from external source (e.g., a separate login page)
